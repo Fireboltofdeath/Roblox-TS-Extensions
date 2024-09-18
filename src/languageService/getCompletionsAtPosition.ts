@@ -165,6 +165,32 @@ export function getCompletionsAtPositionFactory(provider: Provider): ts.Language
 		);
 	}
 
+	/**
+	 * Returns the modified entry that corresponds to the provided completion entry.
+	 */
+	function getModifiedEntry(
+		map: Map<string, Array<ModifiedEntry>>,
+		file: string,
+		completion: ts.CompletionEntry,
+	): ModifiedEntry {
+		const nameEntry = map.get(completion.name);
+		if (!nameEntry) {
+			return {};
+		}
+
+		const symbolEntry = nameEntry.find((entry) => {
+			if (entry.source === undefined && completion.source === undefined) {
+				return true;
+			}
+
+			if (entry.source !== undefined && completion.source !== undefined) {
+				return path.resolve(entry.source) === path.resolve(path.dirname(file), completion.source);
+			}
+		});
+
+		return symbolEntry ?? {};
+	}
+
 	return (file, pos, opt) => {
 		const fileBoundary = getNetworkBoundary(provider, file);
 		const orig = service.getCompletionsAtPosition(file, pos, opt);
@@ -203,7 +229,7 @@ export function getCompletionsAtPositionFactory(provider: Provider): ts.Language
 			const entries: ts.CompletionEntry[] = [];
 			orig.entries.forEach((v) => {
 				const modifiers = v.kindModifiers;
-				const modification = modifiedEntries.get(v.name)?.find((entry) => entry.source === v.source) ?? {};
+				const modification = getModifiedEntry(modifiedEntries, file, v);
 				if (modifiers?.includes("deprecated") && config.hideDeprecated) return;
 				if (modification.remove) return;
 
