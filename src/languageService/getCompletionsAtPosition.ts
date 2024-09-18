@@ -184,7 +184,11 @@ export function getCompletionsAtPositionFactory(provider: Provider): ts.Language
 			}
 
 			if (entry.source !== undefined && completion.source !== undefined) {
-				return path.resolve(entry.source) === path.resolve(path.dirname(file), completion.source);
+				const completionPath = completion.source.startsWith(".")
+					? path.join(path.dirname(file), completion.source)
+					: path.join(provider.program.getCommonSourceDirectory(), completion.source);
+
+				return path.resolve(entry.source) === path.resolve(completionPath);
 			}
 		});
 
